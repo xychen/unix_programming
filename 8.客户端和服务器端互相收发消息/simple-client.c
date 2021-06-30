@@ -1,5 +1,5 @@
 /**
- * 客户端和服务器端互相收发消息 - server端
+ * 客户端和服务器端互相收发消息 - client端
  * 参考文章：http://zhoulifa.bokee.com/6064533.html
  * 编译程序用下列命令：gcc -Wall simple-client.c -o client
  * 运行程序用如下命令：./client 127.0.0.1 7838
