@@ -2,9 +2,10 @@
  * epoll实现的服务端
  * 参考文章：http://zhoulifa.bokee.com/6081520.html
  * 编译程序用下列命令：gcc -Wall epoll-server.c -o epoll-server
- * 运行程序用如下命令：./server 7838 1
+ * 运行程序用如下命令：
+ * 服务端运行： ./epoll-server 10000 2 127.0.0.1
+ * 客户端运行：nc 127.0.0.1 10000
  * */
-
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -59,12 +60,12 @@ int handle_message(int new_fd)
 
 int main(int argc, char **argv)
 {
-    int listener, new_fd, kdpfd, nfds, n, ret, curfds;
+    int listen_fd, new_fd, epoll_fd, epoll_fired_events_num, n, ret, curfds;
     socklen_t len;
     struct sockaddr_in my_addr, their_addr;
     unsigned int myport, lisnum;
     struct epoll_event ev;
-    struct epoll_event events[MAXEPOLLSIZE];
+    struct epoll_event fired_events[MAXEPOLLSIZE];
     struct rlimit rt;
 
     if (argv[1])
@@ -98,7 +99,7 @@ int main(int argc, char **argv)
     }
 
     //开启socket监听
-    if ((listener = socket(PF_INET, SOCK_STREAM, 0)) == -1)
+    if ((listen_fd = socket(PF_INET, SOCK_STREAM, 0)) == -1)
     {
         perror("socket");
         exit(1);
@@ -108,7 +109,7 @@ int main(int argc, char **argv)
         printf("socket 创建成功！\n");
     }
 
-    setnonblocking(listener);
+    setnonblocking(listen_fd);
 
     bzero(&my_addr, sizeof(my_addr));
     my_addr.sin_family = PF_INET;
@@ -122,7 +123,7 @@ int main(int argc, char **argv)
         my_addr.sin_addr.s_addr = INADDR_ANY;
     }
 
-    if (bind(listener, (struct sockaddr *)&my_addr, sizeof(struct sockaddr)) == -1)
+    if (bind(listen_fd, (struct sockaddr *)&my_addr, sizeof(struct sockaddr)) == -1)
     {
         perror("bind");
         exit(1);
@@ -132,7 +133,7 @@ int main(int argc, char **argv)
         printf("IP 地址和端口绑定成功\n");
     }
 
-    if (listen(listener, lisnum) == -1)
+    if (listen(listen_fd, lisnum) == -1)
     {
         perror("listen");
         exit(1);
@@ -143,13 +144,13 @@ int main(int argc, char **argv)
     }
 
     //创建epoll句柄，把监听socket假如到epoll集合里
-    kdpfd = epoll_create(MAXEPOLLSIZE);
+    epoll_fd = epoll_create(MAXEPOLLSIZE);
     len = sizeof(struct sockaddr_in);
     ev.events = EPOLLIN | EPOLLET;
-    ev.data.fd = listener;
-    if (epoll_ctl(kdpfd, EPOLL_CTL_ADD, listener, &ev) < 0)
+    ev.data.fd = listen_fd;
+    if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, listen_fd, &ev) < 0)
     {
-        fprintf(stderr, "epoll set insertion error: fd=%d\n", listener);
+        fprintf(stderr, "epoll set insertion error: fd=%d\n", listen_fd);
         return -1;
     }
     else
@@ -160,31 +161,31 @@ int main(int argc, char **argv)
     curfds = 1;
     while (1)
     {
-        //等待有事件发生
-        nfds = epoll_wait(kdpfd, events, curfds, -1);
-        if (nfds == -1)
+        //等待有事件发生，fired_events中存储已经触发的事件，-1表示没有超时时间，返回触发的事件数量
+        epoll_fired_events_num = epoll_wait(epoll_fd, fired_events, curfds, -1);
+        if (epoll_fired_events_num == -1)
         {
             perror("epoll_wait");
             break;
         }
         //处理所有事件
-        for (n = 0; n < nfds; ++n)
+        for (n = 0; n < epoll_fired_events_num; ++n)
         {
-            if (events[n].data.fd == listener)
+            if (fired_events[n].data.fd == listen_fd)
             {
-                new_fd = accept(listener, (struct sockaddr *)&their_addr, &len);
+                new_fd = accept(listen_fd, (struct sockaddr *)&their_addr, &len);
                 if (new_fd < 0)
                 {
                     perror("accept");
                     continue;
                 }
                 else
-                    printf("有连接来自于： %d:%d， 分配的 socket 为:%d\n", inet_ntoa(their_addr.sin_addr), ntohs(their_addr.sin_port), new_fd);
+                    printf("有连接来自于： %s:%d， 分配的 socket 为:%d\n", inet_ntoa(their_addr.sin_addr), ntohs(their_addr.sin_port), new_fd);
 
                 setnonblocking(new_fd);
                 ev.events = EPOLLIN | EPOLLET;
                 ev.data.fd = new_fd;
-                if (epoll_ctl(kdpfd, EPOLL_CTL_ADD, new_fd, &ev) < 0)
+                if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, new_fd, &ev) < 0)
                 {
                     fprintf(stderr, "把 socket '%d' 加入 epoll 失败！%s\n", new_fd, strerror(errno));
                     return -1;
@@ -193,15 +194,15 @@ int main(int argc, char **argv)
             }
             else
             {
-                ret = handle_message(events[n].data.fd);
+                ret = handle_message(fired_events[n].data.fd);
                 if (ret < 1 && errno != 11)
                 {
-                    epoll_ctl(kdpfd, EPOLL_CTL_DEL, events[n].data.fd, &ev);
+                    epoll_ctl(epoll_fd, EPOLL_CTL_DEL, fired_events[n].data.fd, &ev);
                     curfds--;
                 }
             }
         }
     }
-    close(listener);
+    close(listen_fd);
     return 0;
 }
