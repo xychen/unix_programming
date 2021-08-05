@@ -30,6 +30,7 @@ bin/testlisten 127.0.0.1 5000 4
 ```shell
 telnet 127.0.0.1 5000
 ```
+![telnet1.png](./image/telnet1.png)
 
 - 查看状态
 
@@ -44,22 +45,24 @@ backlog的值虽然设置的为4，但是前5个连接都是 ESTABLISHED 状态�
 
 ESTABLISHED的数量为什么是5而不是4呢？因为内核函数中是 > （大于号判断），
 
-```
+```c
 static inline bool sk_acceptq_is_full(const struct sock *sk)
 {
 	return sk->sk_ack_backlog > sk->sk_max_ack_backlog;
 }
 ```
 
-参考：<https://segmentfault.com/a/1190000019252960>
-
-- 继续执行
+参考：<https://segmentfault.com/a/1190000019252960> 
 
 - tcpdump抓包
 
-```
+```shell
 sudo tcpdump -i lo port 5000
 ```
 
+![tcpdump1.png](./image/tcpdump1.png)
 
-1. backlog的值虽然设置的为4，但是前
+可以看到，服务端没法接受新的连接，所以连接一直处于SYN_RECV状态，一直在半链接队列中。服务端每隔1s、2s、4s、8s、16s重新发送syn包，重发5次（哪个参数控制的？）之后放弃重发。
+
+再看一下服务端出现SYN_RECV状态时的网络状态，客户端是处于 ESTABLISHED 状态。所以上图中，在telnet中敲回车时（发送\r\n，所以倒数第2个包length是2）,服务端回复了一个RST包。
+
