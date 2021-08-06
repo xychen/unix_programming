@@ -15,7 +15,7 @@ telnet 172.16.15.129 5000
 
 - sleep执行完成之前，拔掉网线（因为是虚拟机，所以执行的是将网络适配器断掉）
 
-![vmware.png](./image/vmware.png)
+<img src="./image/vmware.png" style="zoom:30%">
 
 - 服务端能够 ***正常执行appept***
 ![accept_succ.png](./image/accept_succ.png)
