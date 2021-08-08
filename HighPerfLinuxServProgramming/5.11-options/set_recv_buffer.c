@@ -1,3 +1,4 @@
+
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -8,23 +9,18 @@
 #include <errno.h>
 #include <string.h>
 
-#define BUF_SIZE 1024
+#define BUFFER_SIZE 1024
 
 int main(int argc, char *argv[])
 {
-    if (argc <= 2)
+    if (argc <= 3)
     {
         printf("usage: %s ip_address port_number\n", argv[0]);
         return 1;
     }
-    int i;
-    for(i = 0; i < argc; i++)
-    {
-        printf("%s\n", argv[i]);
-    }
-    return 0;
     const char *ip = argv[1];
     int port = atoi(argv[2]);
+    printf("%s %d\n", ip, port);
 
     struct sockaddr_in address;
     bzero(&address, sizeof(address));
@@ -34,15 +30,20 @@ int main(int argc, char *argv[])
 
     int sock = socket(PF_INET, SOCK_STREAM, 0);
     assert(sock >= 0);
+    int recvbuf = atoi(argv[3]);
+    int len = sizeof(recvbuf);
+
+    setsockopt(sock, SOL_SOCKET, SO_RCVBUF, &recvbuf, sizeof(recvbuf));
+    getsockopt(sock, SOL_SOCKET, SO_RCVBUF, &recvbuf, (socklen_t *)&len);
+    printf("the tcp receive buffer size after setting is %d\n", recvbuf);
+
     int ret = bind(sock, (struct sockaddr *)&address, sizeof(address));
     assert(ret != -1);
-
-    ret = listen(sock, 5);
+    ret = listen(sock, 6);
     assert(ret != -1);
 
     struct sockaddr_in client;
     socklen_t client_addrlength = sizeof(client);
-
     int connfd = accept(sock, (struct sockaddr *)&client, &client_addrlength);
     if (connfd < 0)
     {
@@ -50,23 +51,13 @@ int main(int argc, char *argv[])
     }
     else
     {
-        char buffer[BUF_SIZE];
-
-        memset(buffer, '\0', BUF_SIZE);
-        ret = recv(connfd, buffer, BUF_SIZE - 1, 0);
-        printf("got %d bytes of normal data '%s' \n", ret, buffer);
-
-        memset(buffer, '\0', BUF_SIZE);
-        ret = recv(connfd, buffer, BUF_SIZE - 1, MSG_OOB);
-        printf("got %d bytes of oob data '%s' \n", ret, buffer);
-
-        memset(buffer, '\0', BUF_SIZE);
-        ret = recv(connfd, buffer, BUF_SIZE - 1, 0);
-        printf("got %d bytes of normal data '%s' \n", ret, buffer);
-
+        char buffer[BUFFER_SIZE];
+        memset(buffer, '\0', BUFFER_SIZE);
+        while (recv(connfd, buffer, BUFFER_SIZE - 1, 0) > 0)
+        {
+        }
         close(connfd);
     }
     close(sock);
-
     return 0;
 }
