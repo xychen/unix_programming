@@ -37,6 +37,11 @@ void addfd(int epollfd, int fd, bool enable_et)
     setnonblocking(fd);
 }
 
+void delfd(int epollfd, int fd)
+{
+    epoll_ctl(epollfd, EPOLL_CTL_DEL, fd, NULL);
+}
+
 void lt(epoll_event *events, int number, int epollfd, int listenfd)
 {
     char buf[BUFFER_SIZE];
@@ -61,6 +66,7 @@ void lt(epoll_event *events, int number, int epollfd, int listenfd)
             if (ret <= 0)
             {
                 //@todo: ？？？？不需要从epoll中移除吗？？？？
+                delfd(epollfd, fd);
                 close(fd);
                 continue;
             }
@@ -100,15 +106,18 @@ void et(epoll_event *events, int number, int epollfd, int listenfd)
                 {
                     if ((errno == EAGAIN) || (errno == EWOULDBLOCK))
                     {
-                        printf("read later\n");
+                        printf("read later %d - %d - %d\n", errno, EAGAIN, EWOULDBLOCK);
                         break;
                     }
-                    //@todo： 不用从epoll中删除吗
+                    printf("other error %d - %d\n", ret, errno);
+                    delfd(epollfd, fd);
                     close(fd);
                     break;
                 }
                 else if (ret == 0)
                 {
+                    //@todo： 不用从epoll中删除吗
+                    delfd(epollfd, fd);
                     close(fd);
                 }
                 else
