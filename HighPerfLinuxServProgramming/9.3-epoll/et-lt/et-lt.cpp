@@ -65,7 +65,6 @@ void lt(epoll_event *events, int number, int epollfd, int listenfd)
             int ret = recv(fd, buf, BUFFER_SIZE - 1, 0);
             if (ret <= 0)
             {
-                //@todo: ？？？？不需要从epoll中移除吗？？？？
                 delfd(epollfd, fd);
                 close(fd);
                 continue;

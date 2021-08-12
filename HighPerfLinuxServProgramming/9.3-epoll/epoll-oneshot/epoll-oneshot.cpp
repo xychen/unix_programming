@@ -50,6 +50,11 @@ void reset_oneshot(int epollfd, int fd)
     epoll_ctl(epollfd, EPOLL_CTL_MOD, fd, &event);
 }
 
+void delfd(int epollfd, int fd)
+{
+    epoll_ctl(epollfd, EPOLL_CTL_DEL, fd, NULL);
+}
+
 void *worker(void *arg)
 {
     int sockfd = ((fds *)arg)->sockfd;
@@ -63,7 +68,7 @@ void *worker(void *arg)
         int ret = recv(sockfd, buf, BUFFER_SIZE - 1, 0);
         if (ret == 0)
         {
-            //@todo： 从epoll中删除
+            delfd(epollfd, sockfd);
             close(sockfd);
             printf("foreiner closed the connection\n");
             break;
@@ -117,6 +122,7 @@ int main(int argc, char *argv[])
     int epollfd = epoll_create(5);
     assert(epollfd != -1);
 
+    //listen fd添加到epoll集合中，只有主进程在listen，不需要担心epoll oneshot问题
     addfd(epollfd, listenfd, false);
 
     while (1)
@@ -130,14 +136,15 @@ int main(int argc, char *argv[])
         for (int i = 0; i < ret; i++)
         {
             int sockfd = events[i].data.fd;
-            if (sockfd == listenfd)
+            if (sockfd == listenfd) //新连接
             {
                 struct sockaddr_in client_address;
                 socklen_t client_addrlength = sizeof(client_address);
                 int connfd = accept(listenfd, (struct sockaddr *)&client_address, &client_addrlength);
+                //添加到epoll fd中
                 addfd(epollfd, connfd, true);
             }
-            else if (events[i].events & EPOLLIN)
+            else if (events[i].events & EPOLLIN) //读事件
             {
                 pthread_t thread;
                 fds fds_for_new_worker;
