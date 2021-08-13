@@ -183,6 +183,6 @@ int main(int argc, char *argv[])
             lt(events, ret, epollfd, listenfd); //lt模式
         }
     }
-
+    close(listenfd);
     return 0;
 }
