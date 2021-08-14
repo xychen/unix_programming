@@ -25,4 +25,9 @@
 
 ![redis-close](image/redis-close.png)
 
-## todo:修改代码使用注册回调函数的方式
+## todo  
+- 修改代码使用注册回调函数的方式
+- 接受的数据超过read_buffer时如何处理
+- 发送的数据太多时如何处理
+- 自定义协议
+- 信号处理
