@@ -19,9 +19,16 @@ void printfoo(const char *s, const struct foo *fp)
 void *thr_fn1(void *arg)
 {
     struct foo foo = {1, 2, 3, 4};
+    struct foo *foo2 = (struct foo*)malloc(sizeof(struct foo));
+    foo2->a = 1;
+    foo2->b = 2;
+    foo2->c = 3;
+    foo2->d = 4;
     printfoo("thread 1:\n", &foo);
     //退出之后，线程的栈空间会被其他数据覆盖
-    pthread_exit((void *)&foo);
+    //pthread_exit((void *)&foo);
+    // 使用malloc分配的空间没有问题
+    pthread_exit((void *)foo2);
 }
 
 void *thr_fn2(void *arg)
