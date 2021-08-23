@@ -24,7 +24,7 @@ ifeq "$(PLATFORM)" "solaris"
 endif
 
 #PROGS = badexit2 cleanup exitstatus threadid
-PROGS = threadid badexit exitstatus cleanup 11-13-timedlock
+PROGS = threadid badexit exitstatus cleanup 11-13-timedlock 11-16-barrier
 
 # all:	$(PROGS) condvar.o maketimeout.o mutex1.o mutex2.o mutex3.o rwlock.o $(TLOCK) $(BAR)
 all:	$(PROGS)
